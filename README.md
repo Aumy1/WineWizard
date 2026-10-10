@@ -7,6 +7,12 @@ which of three cultivars a wine comes from, based on 13 chemical measurements
 It uses the classic UCI Wine dataset, which is bundled with scikit-learn, so
 there's nothing to download — just install and run.
 
+## Live demo
+
+[Open WineWizard](https://aumy1.github.io/WineWizard/)
+
+The website is published automatically from `web/` when changes reach `main`.
+
 ## Setup
 
 ```bash
