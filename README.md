@@ -56,3 +56,38 @@ winewizard/
 ## License
 
 MIT — do whatever you'd like with it.
+
+## Visual interface
+
+WineWizard includes a browser interface in `web/`. It uses the actual trained
+200-tree Random Forest, with editable inputs for all 13 measurements, demo reset,
+class probabilities, and a chart of the five most important features.
+
+Start it from the project directory:
+
+```bash
+python -m http.server 8000 --directory web
+```
+
+Open **http://localhost:8000**, then click **Predict cultivar**. The included
+`web/model.json` is ready to use; Python ML dependencies are only needed to
+retrain the model. Predictions run locally in your browser.
+
+If you retrain, refresh the browser model:
+
+```bash
+python train.py
+python export_web_model.py
+```
+
+Inputs must be finite, nonnegative numbers. Values outside the original dataset
+ranges show a caution. Class 0, 1, and 2 are dataset labels, not commercial wine
+names or quality ratings. Probabilities are model estimates, not guarantees.
+The browser predictor was checked against Python on all 178 dataset samples.
+
+For static hosting, publish the contents of `web/` (for example with GitHub Pages).
+
+### Interface assets
+
+The pointer and text-cursor SVGs in `web/assets/` are from the user-supplied
+Apple macOS 27 UI kit asset archive. Other interface visuals are built with CSS.
