@@ -65,12 +65,13 @@ MIT — do whatever you'd like with it.
 
 ## Visual interface
 
-WineWizard helps you understand a store bottle from its label and explore wine chemistry. The browser interface in `web/` has two modes:
+WineWizard helps you explore wine styles matching your tastes, understand a store bottle from its label, and experiment with wine chemistry. The browser interface in `web/` has two modes:
 
-- **Bottle guide:** enter label details for sourced general context. Price and volume calculate cost per 100 mL; ABV and volume calculate pure alcohol volume. Unknown details remain unknown. This does not identify a bottle, infer its chemical measurements, or rate quality.
+- **Taste finder:** filter a small sourced guide by colour, body, and character. Suggestions are general styles, not verified bottle matches or local stock listings.
+- **Bottle guide:** enter label details for sourced general context. Price and volume calculate cost per 100 mL; ABV and volume calculate pure alcohol volume. Missing label details remain unknown. This does not identify a bottle, infer its chemical measurements, or rate quality.
 - **Chemistry lab:** enter all 13 compatible chemical measurements or use the demo. It uses the actual trained
 200-tree Random Forest, with editable inputs for all 13 measurements, demo reset,
-class probabilities, and a chart of the five most important features.
+class probabilities, and a chart of the five most important features. A separate experimental missing-value tool uses the median of 10 nearby training samples to estimate blank chemical inputs. Entered values are preserved; guessed values are labelled Estimated. Neighbour ranges are not confidence intervals, and estimates are not automatically passed to the classifier.
 
 Start it from the project directory:
 
@@ -87,6 +88,7 @@ If you retrain, refresh the browser model:
 ```bash
 python train.py
 python export_web_model.py
+python export_estimator.py
 ```
 
 Inputs must be finite, nonnegative numbers. Values outside the original dataset
@@ -100,3 +102,7 @@ For static hosting, publish the contents of `web/` (for example with GitHub Page
 
 The pointer and text-cursor SVGs in `web/assets/` are from the user-supplied
 Apple macOS 27 UI kit asset archive. Other interface visuals are built with CSS.
+
+### Experimental estimate validation
+
+The estimate reference contains only the 142 training rows from the same stratified split. On 36 held-out rows, mean absolute error scaled by training standard deviation was 0.765 with only alcohol observed (median baseline 0.846), and 0.649 with alcohol, malic acid and color intensity observed (baseline 0.860). These two fixed masking patterns are limited checks; they do not establish accuracy for arbitrary inputs or commercial bottles. Missing chemistry cannot be determined from label details.
