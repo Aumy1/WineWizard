@@ -65,7 +65,10 @@ MIT — do whatever you'd like with it.
 
 ## Visual interface
 
-WineWizard includes a browser interface in `web/`. It uses the actual trained
+WineWizard helps you understand a store bottle from its label and explore wine chemistry. The browser interface in `web/` has two modes:
+
+- **Bottle guide:** enter label details for sourced general context. Price and volume calculate cost per 100 mL; ABV and volume calculate pure alcohol volume. Unknown details remain unknown. This does not identify a bottle, infer its chemical measurements, or rate quality.
+- **Chemistry lab:** enter all 13 compatible chemical measurements or use the demo. It uses the actual trained
 200-tree Random Forest, with editable inputs for all 13 measurements, demo reset,
 class probabilities, and a chart of the five most important features.
 
@@ -75,7 +78,7 @@ Start it from the project directory:
 python -m http.server 8000 --directory web
 ```
 
-Open **http://localhost:8000**, then click **Predict cultivar**. The included
+Open **http://localhost:8000** and choose **Bottle guide** or **Chemistry lab**. The included
 `web/model.json` is ready to use; Python ML dependencies are only needed to
 retrain the model. Predictions run locally in your browser.
 
