@@ -1,0 +1,37 @@
+const styleSource='https://www.wsetglobal.com/knowledge-centre/blog/2023/october/03/how-many-wine-types-and-styles-are-there';
+const grapeContext={
+ 'cabernet sauvignon':{text:'Cabernet Sauvignon is a black grape often associated with full-bodied red wines. Many styles use oak. This is general grape context, not a tasting result for your bottle.',source:styleSource},
+ 'pinot noir':{text:'Pinot Noir is a black grape used for red wines. Growing conditions and winemaking change the finished style. The variety alone does not establish sweetness or quality.',source:styleSource},
+ 'malbec':{text:'Malbec is a black grape used for red wines. The bottle’s precise flavour and quality require more than its grape name.',source:styleSource},
+ 'chardonnay':{text:'Chardonnay is a white grape. Oak treatment and growing climate can change its style considerably; some warm-climate, oaked examples are full-bodied.',source:styleSource},
+ 'riesling':{text:'Riesling is a white grape known for aromatic styles. Check the label or producer for this bottle’s sweetness instead of inferring it from the grape.',source:styleSource},
+ 'sauvignon blanc':{text:'Sauvignon Blanc often has noticeable acidity and herbaceous aromas. Its style varies by region and winemaking. These are general tendencies, not a prediction for this bottle.',source:'https://www.wsetglobal.com/knowledge-centre/blog/2020/may/01/understanding-grapes-spotlight-on-sauvignon-blanc'}
+};
+const typeContext={Still:'Still wine is not sparkling.',Sparkling:'Sparkling wine contains dissolved carbon dioxide that produces bubbles.',Fortified:'Fortified wine has had grape spirit added. Fortified styles can vary in sweetness.'};
+const sweetnessContext={Dry:'Dry describes wine with little or no perceived sweetness.', 'Off-dry':'Off-dry describes a small amount of perceived sweetness.',Medium:'Medium indicates noticeable sweetness.',Sweet:'Sweet indicates sweetness is a prominent characteristic.'};
+const bottleForm=document.getElementById('bottle-form'), bottleResult=document.getElementById('bottle-result'), bottleError=document.getElementById('bottle-error');
+function bottleEmpty(title,message){bottleResult.replaceChildren();const box=document.createElement('div');box.className='empty';const h=document.createElement('h2');h.textContent=title;const p=document.createElement('p');p.textContent=message;box.append(h,p);bottleResult.append(box);bottleResult.dataset.complete='no';}
+function bottleSection(title,text,source){const section=document.createElement('section');section.className='bottle-section';const h=document.createElement('h2');h.textContent=title;const p=document.createElement('p');p.textContent=text;section.append(h,p);if(source){const a=document.createElement('a');a.href=source;a.textContent='Read the educational source ↗';a.target='_blank';a.rel='noopener';section.append(a);}bottleResult.append(section);}
+function showBottle(){
+ const val=id=>document.getElementById('b-'+id).value.trim();
+ const d=Object.fromEntries(['name','grape','region','vintage','type','colour','abv','sweetness','price','currency','size'].map(k=>[k,val(k)]));
+ if(!d.grape&&!d.type){bottleError.textContent='Enter a grape variety or select a wine type to start.';return;}
+ bottleError.textContent='';bottleResult.replaceChildren();bottleResult.dataset.complete='yes';
+ const title=document.createElement('h2');title.className='bottle-heading';title.textContent=d.name||'Your bottle';bottleResult.append(title);
+ const intro=document.createElement('p');intro.className='bottle-result-note';intro.textContent='Details you entered · not independently verified';bottleResult.append(intro);
+ const facts=document.createElement('dl');facts.className='bottle-facts';
+ const rows=[['Grape / blend',d.grape],['Country / region',d.region],['Vintage',d.vintage],['Wine type',d.type],['Colour',d.colour],['Alcohol',d.abv!==''?`${Number(d.abv)}% ABV`:''],['Sweetness',d.sweetness]];
+ for(const [label,value] of rows){const row=document.createElement('div'),dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=value||'Not provided';row.append(dt,dd);facts.append(row);}bottleResult.append(facts);
+ if(d.price!==''&&d.size!==''){const money=new Intl.NumberFormat('en-CA',{style:'currency',currency:d.currency});bottleSection('Price in perspective',`${money.format(Number(d.price))} for ${Number(d.size)} mL = ${money.format(Number(d.price)/Number(d.size)*100)} per 100 mL (${d.currency}). This compares cost by volume, not quality.`);}else{bottleSection('Price in perspective','Enter both bottle price and size to calculate the cost per 100 mL. Missing values are not estimated.');}
+ if(d.abv!==''&&d.size!==''){const alcoholVolume=Number(d.size)*Number(d.abv)/100;bottleSection('Calculated alcohol volume',`${Number(d.size)} mL × ${Number(d.abv)}% ABV = ${new Intl.NumberFormat('en-CA',{maximumFractionDigits:2}).format(alcoholVolume)} mL of pure alcohol in the bottle, based on the values you entered.`);}
+ const context=grapeContext[d.grape.toLowerCase().replace(/\s+/g,' ').trim()];if(context)bottleSection('General grape context',context.text,context.source);else if(d.grape)bottleSection('General grape context','This guide does not have a sourced profile for this grape or blend. Check the producer’s notes for bottle-specific information.');
+ if(d.type)bottleSection('What the type means',typeContext[d.type],styleSource);
+ if(d.sweetness)bottleSection('What the sweetness term means',sweetnessContext[d.sweetness],styleSource);else bottleSection('Sweetness is still unknown','Alcohol percentage and grape name alone cannot establish this bottle’s sweetness. Look for a producer or retailer description.');
+ bottleSection('What this guide cannot establish','Your label details cannot reveal the 13 lab measurements, prove authenticity, score quality, or predict your personal taste. Use the chemistry lab with actual measurements or its demo sample.');
+}
+bottleForm.addEventListener('submit',e=>{e.preventDefault();if(bottleForm.reportValidity())showBottle();});
+bottleForm.addEventListener('input',()=>{bottleError.textContent='';if(bottleResult.dataset.complete==='yes')bottleEmpty('Your label details changed.','Explain this bottle again to update the guide.');});
+document.getElementById('bottle-demo').addEventListener('click',()=>{const example={name:'Example Estate · fictional bottle',grape:'Cabernet Sauvignon',region:'Ontario, Canada',vintage:'2023',type:'Still',colour:'Red',abv:'13.5',sweetness:'Dry',price:'20',currency:'CAD',size:'750'};for(const [key,value] of Object.entries(example))document.getElementById('b-'+key).value=value;bottleError.textContent='';bottleEmpty('A fictional bottle, ready to explore.','Choose Explain this bottle to see what the label can tell you.');});
+const modeTabs=[document.getElementById('store-tab'),document.getElementById('lab-tab')];
+function setWineMode(tab){for(const item of modeTabs){const active=item===tab;item.setAttribute('aria-selected',String(active));item.tabIndex=active?0:-1;document.getElementById(item.getAttribute('aria-controls')).hidden=!active;}}
+for(const tab of modeTabs){tab.addEventListener('click',()=>setWineMode(tab));tab.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?modeTabs[0]:e.key==='End'?modeTabs[1]:modeTabs[1-modeTabs.indexOf(tab)];setWineMode(next);next.focus();}});}
