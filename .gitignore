@@ -8,3 +8,16 @@ venv/
 # Generated local training outputs; the exported browser model is tracked.
 wine_model.joblib
 feature_importance.png
+
+# Node builds, local data and secrets
+node_modules/
+dist/
+data/
+.env
+.env.*
+!.env.example
+
+# Copied from tracked web model exports during each build
+frontend/public/model.json
+frontend/public/reference.json
+frontend/public/assets/

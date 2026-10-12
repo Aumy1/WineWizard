@@ -1,108 +1,71 @@
-# 🍷 WineWizard
+# WineWizard
 
-A tiny, self-contained ML project: a **Random Forest** classifier that predicts
-which of three cultivars a wine comes from, based on 13 chemical measurements
-(alcohol, malic acid, magnesium, color intensity, etc.).
+[Open the live website](https://aumy1.github.io/WineWizard/)
 
-It uses the classic UCI Wine dataset, which is bundled with scikit-learn, so
-there's nothing to download — just install and run.
+WineWizard combines a React wine style guide, a label explainer, a sourced question chatbot, a saved-bottle notebook, and an educational Python wine classifier.
 
-## Live demo
+## What is available
 
-[Open WineWizard](https://aumy1.github.io/WineWizard/)
+- **Taste guide:** filters six sourced wine styles by colour, body and character. It does not identify bottle flavours or check local stock.
+- **Bottle guide:** explains your label entries and calculates price per 100 mL and pure alcohol volume.
+- **Ask WineWizard:** a deterministic reference chatbot with source links. It answers common wine, label, calculation and project questions. It is not an LLM and does not fabricate bottle-specific details.
+- **Notebook:** saves, opens and removes bottles. The public GitHub Pages version saves in your browser; the Node backend stores records in a SQL database.
+- **Chemistry lab:** the exported 200-tree Random Forest runs in the browser. A separate nearest-neighbour tool fills missing chemistry with clearly labelled experimental estimates; estimates are not sent automatically to the classifier.
 
-The website is published automatically from `web/` when changes reach `main`.
+The website uses React, JavaScript and CSS. Python scripts use scikit-learn, NumPy, joblib and matplotlib. The server uses Node.js and SQLite. Firebase sign-in and Supabase PostgreSQL storage adapters are included, but require your own configured projects and a hosted backend before cloud functionality can be verified.
 
-## Setup
+## Run
 
-```bash
+Requires Node.js 24 and pnpm 11.25.0.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm test
+pnpm build
+pnpm start
+```
+
+Open http://127.0.0.1:8787. This runs the full frontend and SQLite API. SQLite data is stored in the ignored `data/` directory. The app isolates notebooks by an opaque browser-session cookie in local mode; do not treat this demo session mode as an account system.
+
+For frontend development, run `pnpm dev` in another terminal while the backend is running. Vite proxies `/api` to the backend. A production static build with no API configured uses browser storage and local reference answers. Local storage and session-cookie data do not sync across devices.
+
+## Cloud integration
+
+Copy `.env.example` to `.env` and configure only the services you want. Keep service-role credentials exclusively on the server; they must never use a `VITE_` prefix or be committed.
+
+For Firebase + Supabase:
+
+1. Enable Google sign-in in your own Firebase project; add the deployed web domain to authorized domains.
+2. Set the four public `VITE_FIREBASE_*` fields and matching server `FIREBASE_PROJECT_ID`.
+3. Run `database/supabase.sql` in your own Supabase project. Row level security is enabled with no browser access policies; only the server service role accesses this table.
+4. Set server `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+5. Host the Node server with HTTPS. Set its exact allowed client origins and set `VITE_API_URL` to its base URL before building the frontend.
+
+The backend verifies Firebase token signatures, issuer, audience and expiry and applies owner filters on every database operation. The Supabase adapter and authentication error paths are tested with substitutes; an actual cloud connection is still required for end-to-end verification. The public Pages deployment deliberately has no server secrets or unconfigured sign-in buttons.
+
+## Consumer app design
+
+See [architecture and screen flows](docs/product-architecture.md) for the planned React Native app, onboarding quiz, personalized match score, OCR scanner, retailer inventory and private intake journal. These future features are not represented as live capabilities.
+
+[Shared taste-matching and intake logic examples](examples/product-logic.mjs) include descriptor coverage, Canadian standard drinks, timezone-aware weekly totals and missing-input handling. The tests cover representative cases; real recommendation calibration and retailer/OCR integration need separate evaluation.
+
+## Python model
+
+```sh
 pip install -r requirements.txt
-```
-
-## Train
-
-```bash
-python train.py
-```
-
-This will:
-- Train a `RandomForestClassifier` on an 80/20 train/test split
-- Print accuracy and a classification report
-- Save the trained model to `wine_model.joblib`
-- Save a feature-importance bar chart to `feature_importance.png`
-
-## Predict
-
-```bash
-# Demo sample
-python predict.py
-
-# Your own sample (13 values, same order as the dataset's features)
-python predict.py 13.2 1.78 2.14 11.2 100 2.65 2.76 0.26 1.28 4.38 1.05 3.4 1050
-```
-
-## Project structure
-
-```
-winewizard/
-├── train.py              # trains and saves the model + chart
-├── predict.py            # loads the model and predicts on a sample
-├── requirements.txt
-├── .gitignore
-└── README.md
-```
-
-## Ideas to extend it
-
-- Swap in `GradientBoostingClassifier` or `XGBoost` and compare accuracy
-- Add a `Flask`/`FastAPI` endpoint so predictions can be requested over HTTP
-- Add cross-validation and hyperparameter tuning (`GridSearchCV`)
-- Build a small Streamlit UI with sliders for each chemical feature
-
-## License
-
-MIT — do whatever you'd like with it.
-
-## Visual interface
-
-WineWizard helps you explore wine styles matching your tastes, understand a store bottle from its label, and experiment with wine chemistry. The browser interface in `web/` has two modes:
-
-- **Taste finder:** filter a small sourced guide by colour, body, and character. Suggestions are general styles, not verified bottle matches or local stock listings.
-- **Bottle guide:** enter label details for sourced general context. Price and volume calculate cost per 100 mL; ABV and volume calculate pure alcohol volume. Missing label details remain unknown. This does not identify a bottle, infer its chemical measurements, or rate quality.
-- **Chemistry lab:** enter all 13 compatible chemical measurements or use the demo. It uses the actual trained
-200-tree Random Forest, with editable inputs for all 13 measurements, demo reset,
-class probabilities, and a chart of the five most important features. A separate experimental missing-value tool uses the median of 10 nearby training samples to estimate blank chemical inputs. Entered values are preserved; guessed values are labelled Estimated. Neighbour ranges are not confidence intervals, and estimates are not automatically passed to the classifier.
-
-Start it from the project directory:
-
-```bash
-python -m http.server 8000 --directory web
-```
-
-Open **http://localhost:8000** and choose **Bottle guide** or **Chemistry lab**. The included
-`web/model.json` is ready to use; Python ML dependencies are only needed to
-retrain the model. Predictions run locally in your browser.
-
-If you retrain, refresh the browser model:
-
-```bash
 python train.py
 python export_web_model.py
 python export_estimator.py
 ```
 
-Inputs must be finite, nonnegative numbers. Values outside the original dataset
-ranges show a caution. Class 0, 1, and 2 are dataset labels, not commercial wine
-names or quality ratings. Probabilities are model estimates, not guarantees.
-The browser predictor was checked against Python on all 178 dataset samples.
+The UCI Wine dataset has 178 samples, 13 measurements and three class labels. A stratified 80/20 split achieved 36/36 correct classifications on one held-out split. This does not establish accuracy on store wines. The React predictor is tested against Python probabilities on all 178 rows.
 
-For static hosting, publish the contents of `web/` (for example with GitHub Pages).
+The missing-value reference contains the 142 training rows. With only alcohol observed, held-out scaled mean absolute error was 0.765 (median baseline 0.846); with alcohol, malic acid and color intensity observed, error was 0.649 (baseline 0.860). These two fixed masking patterns do not validate commercial bottle chemistry. Neighbour ranges are not confidence intervals.
 
-### Interface assets
+## Deployment and checks
 
-The pointer and text-cursor SVGs in `web/assets/` are from the user-supplied
-Apple macOS 27 UI kit asset archive. Other interface visuals are built with CSS.
+GitHub Actions installs dependencies, runs the tests, builds React and publishes `dist/` to GitHub Pages. The Node backend must be hosted separately for remote database features; Pages runs the frontend.
 
-### Experimental estimate validation
+Tests cover model parity, estimates, calculations, chatbot answers, SQL persistence, notebook isolation, input validation, authentication rejection, origin checks and the shared product logic.
 
-The estimate reference contains only the 142 training rows from the same stratified split. On 36 held-out rows, mean absolute error scaled by training standard deviation was 0.765 with only alcohol observed (median baseline 0.846), and 0.649 with alcohol, malic acid and color intensity observed (baseline 0.860). These two fixed masking patterns are limited checks; they do not establish accuracy for arbitrary inputs or commercial bottles. Missing chemistry cannot be determined from label details.
+Pointer/text-cursor SVG assets came from the user-supplied macOS UI kit. Other visuals are built in CSS.

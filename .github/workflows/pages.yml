@@ -1,19 +1,15 @@
 name: Publish WineWizard
-
 on:
   push:
     branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: read
   pages: write
   id-token: write
-
 concurrency:
   group: pages
   cancel-in-progress: false
-
 jobs:
   deploy:
     environment:
@@ -23,12 +19,26 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check functionality
+        run: pnpm test
+      - name: Build React website
+        run: pnpm build
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload interface
         uses: actions/upload-pages-artifact@v3
         with:
-          path: web
+          path: dist
       - name: Publish
         id: deployment
         uses: actions/deploy-pages@v5
