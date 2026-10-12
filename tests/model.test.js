@@ -5,13 +5,13 @@ import { winePredict, estimateMissing, bottleCalculations } from '../frontend/mo
 const json = path => JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'));
 
 test('React browser predictor agrees with Python on all 178 dataset rows', () => {
-  const model = json('../frontend/public/model.json'), expected = json('./fixtures/model-parity.json');
+  const model = json('../web/model.json'), expected = json('./fixtures/model-parity.json');
   assert.equal(expected.samples.length, 178);
   expected.samples.forEach((sample, row) => winePredict(model, sample).forEach((probability, i) => assert.ok(Math.abs(probability - expected.probabilities[row][i]) < 1e-10, `row ${row}, class ${i}`)));
 });
 
 test('three known values are preserved while estimates match independent Python results', () => {
-  const reference = json('../frontend/public/reference.json');
+  const reference = json('../web/reference.json');
   const values = [13.2, 1.78, null, null, null, null, null, null, null, 4.38, null, null, null];
   const result = estimateMissing(reference, values);
   assert.equal(result.filter(value => value.estimated).length, 10);
