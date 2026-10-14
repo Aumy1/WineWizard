@@ -26,6 +26,8 @@ test('SQL bottle persistence, user isolation, owner-only deletion and validation
     assert.equal((await (await fetch(`${service.url}/api/bottles`, { headers: { Cookie: a } })).json()).bottles.length, 1);
     const invalid = await fetch(`${service.url}/api/bottles`, { method: 'POST', headers: { Cookie: a, 'Content-Type': 'application/json' }, body: JSON.stringify({ bottle: { name: 'Bad', abv: '-1' } }) });
     assert.equal(invalid.status, 400);
+    const nullBody = await fetch(`${service.url}/api/chat`, { method: 'POST', body: 'null' });
+    assert.equal(nullBody.status, 400);
     await fetch(`${service.url}/api/bottles/${id}`, { method: 'DELETE', headers: { Cookie: a } });
     assert.equal((await (await fetch(`${service.url}/api/bottles`, { headers: { Cookie: a } })).json()).bottles.length, 0);
   } finally { await service.close(); }

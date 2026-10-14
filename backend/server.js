@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { sqliteStore, supabaseStore } from './storage.js';
 import { answerWineQuestion } from '../frontend/src/wine-assistant.js';
+import { createOnlineAssistant } from './ai-assistant.js';
 
 const allowedFields = ['name', 'grape', 'region', 'vintage', 'type', 'colour', 'abv', 'sweetness', 'price', 'currency', 'size', 'notes'];
 const numericLimits = { vintage: [1800, 2100], abv: [0, 100], price: [0, 1000000], size: [1, 1000000] };
@@ -45,7 +46,7 @@ async function readJson(request) {
   try { return JSON.parse(text); } catch { const error = Error('Use a valid JSON request.'); error.status = 400; throw error; }
 }
 
-export function createApp({ store = sqliteStore(), verifyToken, origins = [], staticDir = 'dist', rateLimit = 60 } = {}) {
+export function createApp({ store = sqliteStore(), verifyToken, origins = [], staticDir = 'dist', rateLimit = 60, onlineAssistant = null } = {}) {
   const root = resolve(staticDir), buckets = new Map();
   function json(response, status, body) {
     response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -84,18 +85,26 @@ export function createApp({ store = sqliteStore(), verifyToken, origins = [], st
       let bucket = buckets.get(ip);
       if (!bucket || now - bucket.start > 60000) { bucket = { start: now, count: 0 }; buckets.set(ip, bucket); }
       if (++bucket.count > rateLimit) return json(response, 429, { error: 'Too many requests. Try again in a minute.' });
-      if (url.pathname === '/api/health' && request.method === 'GET') return json(response, 200, { ok: true, database: store.provider, chatbot: 'reference', authentication: verifyToken ? 'firebase' : 'browser-session' });
+      if (url.pathname === '/api/health' && request.method === 'GET') return json(response, 200, { ok: true, database: store.provider, chatbot: onlineAssistant ? 'ai' : 'reference', webSearchConfigured: Boolean(onlineAssistant), authentication: verifyToken ? 'firebase' : 'browser-session' });
       if (url.pathname === '/api/chat' && request.method === 'POST') {
-        const { messages, context } = await readJson(request);
+        const body = await readJson(request);
+        if (!body || Array.isArray(body) || typeof body !== 'object') return json(response, 400, { error: 'Send a question object.' });
+        const { messages, context } = body;
         if (!Array.isArray(messages) || !messages.length || messages.length > 20 || messages.some(m => !m || !['user', 'assistant'].includes(m.role) || typeof m.content !== 'string' || m.content.length > 2000)) return json(response, 400, { error: 'Send up to 20 messages of 2,000 characters.' });
         const last = messages.at(-1);
         if (last.role !== 'user' || !last.content.trim()) return json(response, 400, { error: 'Enter a question.' });
-        // The reference assistant answers questions without storing the conversation.
+        // Conversations are not stored. Stock questions always use the explicit boundary.
         const safeContext = context && typeof context === 'object' && !Array.isArray(context) ? context : {};
+        if (onlineAssistant && !/\b(inventory|in[ -]stock|retail\s+stock|availability|store\s+stock|buy\s+(?:it\s+)?(?:near|nearby))\b/i.test(last.content)) {
+          if (bucket.aiCount >= 10) return json(response, 429, { error: 'Live answer limit reached. Try again in a minute.' });
+          bucket.aiCount = (bucket.aiCount || 0) + 1;
+          return json(response, 200, await onlineAssistant(messages, safeContext));
+        }
         return json(response, 200, answerWineQuestion(last.content, safeContext));
       }
       if (url.pathname !== '/api/bottles' && !/^\/api\/bottles\/[\da-f-]{36}$/i.test(url.pathname)) return json(response, 404, { error: 'Not found.' });
       let owner;
+      if (!verifyToken && origin && new URL(origin).hostname !== url.hostname) return json(response, 409, { error: 'Cross-site notebooks require configured sign-in. Use the same-site demo or sign in.' });
       if (verifyToken) {
         const token = request.headers.authorization?.match(/^Bearer (\S+)$/)?.[1];
         if (!token) return json(response, 401, { error: 'Sign in to access saved bottles.' });
@@ -110,7 +119,7 @@ export function createApp({ store = sqliteStore(), verifyToken, origins = [], st
       if (request.method === 'GET' && url.pathname === '/api/bottles') return json(response, 200, { bottles: await store.list(owner), mode: 'database' });
       if (request.method === 'POST' && url.pathname === '/api/bottles') {
         const raw = await readJson(request); let bottle;
-        try { bottle = validateBottle(raw.bottle); } catch (error) { return json(response, 400, { error: error.message }); }
+        try { bottle = validateBottle(raw?.bottle); } catch (error) { return json(response, 400, { error: error.message }); }
         if ((await store.list(owner)).length >= 100) return json(response, 409, { error: 'Your notebook holds up to 100 bottles. Remove one first.' });
         return json(response, 201, { bottles: await store.save(owner, bottle), mode: 'database' });
       }
@@ -125,7 +134,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, FIREBASE_PROJECT_ID } = process.env;
   if (Boolean(SUPABASE_URL) !== Boolean(SUPABASE_SERVICE_ROLE_KEY)) throw Error('Set both Supabase server environment variables.');
   const store = SUPABASE_URL ? supabaseStore(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) : sqliteStore(process.env.DATABASE_PATH || 'data/winewizard.sqlite');
-  const { server } = createApp({ store, verifyToken: FIREBASE_PROJECT_ID ? firebaseVerifier(FIREBASE_PROJECT_ID) : undefined, origins: (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean) });
+  if (Boolean(process.env.OPENAI_API_KEY) !== Boolean(process.env.OPENAI_MODEL)) throw Error('Set both OPENAI_API_KEY and OPENAI_MODEL to enable online answers.');
+  const onlineAssistant = createOnlineAssistant({ apiKey: process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL });
+  const { server } = createApp({ store, onlineAssistant, verifyToken: FIREBASE_PROJECT_ID ? firebaseVerifier(FIREBASE_PROJECT_ID) : undefined, origins: (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean) });
   const port = Number(process.env.PORT || 8787);
   server.listen(port, process.env.HOST || '127.0.0.1', () => console.log(`WineWizard backend: http://127.0.0.1:${port} (${store.provider})`));
   for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => server.close(() => { store.close(); process.exit(0); }));

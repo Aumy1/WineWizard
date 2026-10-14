@@ -34,12 +34,13 @@ export async function signOut() {
   return getSession();
 }
 async function request(path, options = {}) {
+  const { timeoutMs = 12000, ...fetchOptions } = options;
   const headers = { 'Content-Type': 'application/json' };
   if (authEnabled) {
     const { instance } = await firebaseAuth();
     if (instance.currentUser) headers.Authorization = `Bearer ${await instance.currentUser.getIdToken()}`;
   }
-  const response = await fetch(`${apiRoot}${path}`, { ...options, headers, credentials: 'include', signal: AbortSignal.timeout(12000) });
+  const response = await fetch(`${apiRoot}${path}`, { ...fetchOptions, headers, credentials: 'include', signal: AbortSignal.timeout(timeoutMs) });
   const data = await response.json();
   if (!response.ok) throw Error(data.error || 'The service is unavailable. Try again.');
   return data;
@@ -47,7 +48,7 @@ async function request(path, options = {}) {
 export async function askAssistant(messages, context = {}) {
   const recent = messages.slice(-20);
   if (!apiRoot) return answerWineQuestion(recent.at(-1)?.content || '', context);
-  return request('/chat', { method: 'POST', body: JSON.stringify({ messages: recent, context }) });
+  return request('/chat', { method: 'POST', timeoutMs: 55000, body: JSON.stringify({ messages: recent, context }) });
 }
 const storageKey = 'winewizard-bottles-v2';
 function localBottles() {

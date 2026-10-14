@@ -94,7 +94,7 @@ Mobile navigation: **Explore · Scan · Catalog · Journal**, with Ask accessibl
 
 Use an explainable content-based score initially. Normalize sourced body, sweetness, acidity and tannin descriptors to 0–1; include colour and aroma overlap. Learn gradually from rated wines, with a quiz prior so one rating does not reshape the whole profile. Penalize close similarity to strongly disliked styles.
 
-The starter `logic.mjs` returns `matchPercentage`, `descriptorCoverage`, reasons and basis. The percentage is **taste similarity under this rule**, not a calibrated probability of liking a wine. Unknown descriptors are excluded; suppress the percentage when less than 60% of the desired descriptor weight is available. Do not populate bottle-specific descriptors from the educational chemistry model.
+The shared `examples/product-logic.mjs` returns `matchPercentage`, `descriptorCoverage`, reasons and basis. The percentage is **taste similarity under this rule**, not a calibrated probability of liking a wine. Unknown descriptors are excluded; suppress the percentage when less than 60% of the desired descriptor weight is available. Do not populate bottle-specific descriptors from the educational chemistry model.
 
 Validate the algorithm using held-out user ratings: rank liked bottles above disliked bottles, compare with a quiz-only baseline, inspect new-user performance and test missing metadata. Version weights and record the recommendation inputs so scores are explainable. A learned model is a later option once there is enough representative data.
 
@@ -164,4 +164,6 @@ Example endpoints: `GET /catalog`, `POST /match`, `POST /scans`, `PATCH /scans/:
 4. **Mindful journal:** private serving logs, regional definitions, charts and opt-in reminders.
 5. **Mobile:** Expo clients using the same domain functions and APIs.
 
-Already implemented in the working repository: React frontend, sourced reference chatbot, style guide, bottle calculations, notebook UI, tested Node/SQLite API, optional Firebase/Supabase adapters, and chemistry model. Firebase/Supabase projects still need configuration and live verification. Catalog recommendations, OCR, stock feeds and the intake screens above are a design and tested logic examples, not features already deployed.
+Implemented in the web repository: React frontend, interactive quiz, ten sourced educational style profiles, explainable matching influenced by ratings, a local bottle notebook, Tesseract.js image recognition with editable field review, weekly intake charts and optional reminders while the page is open. The bottle guide, reference chatbot, chemistry lab, tested Node/SQLite API and optional Firebase/Supabase adapters also remain available.
+
+The public site runs without an account and stores consumer records in this browser. Its chatbot uses reference answers and flags questions that require fresh verification. A server-only OpenAI web-search adapter is implemented and tested with mocks, but no live API account is configured or verified. Firebase/Supabase also need configuration and live verification. Exact commercial-bottle catalog matching, live inventory feeds, cloud journal sync and the native mobile app are future work. The app links to retailers and explicitly does not check real-time local stock.
